@@ -1,23 +1,48 @@
 steps:
-  # Step 1: Compile the Go Application
+  # Build the binary
   - name: 'gcr.io/cloud-builders/go'
-    env: ['GOPATH=/gopath']
     args: ['build', '-o', 'main', 'main.go']
-
-  # Step 2: Build the Docker image for the Go application
+  
+  # Build the container image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/my-repository/hello-cloudbuild-dev:v1.0', '.']
+    args: [
+      'build',
+      '-t', 'us-central1-docker.pkg.dev/qwiklabs-gcp-01-4fc35229c6d2/my-repository/hello-cloudbuild-dev:',
+      '.'
+    ]
+    id: Build
 
-  # Step 3: Push the Docker image to Artifact Registry
+  # Push the container image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/my-repository/hello-cloudbuild-dev:v1.0']
+    args: [
+      'push',
+      'us-central1-docker.pkg.dev/qwiklabs-gcp-01-4fc35229c6d2/my-repository/hello-cloudbuild-dev:'
+    ]
+    id: Push
 
-  # Step 4: Apply the production deployment YAML file to the production namespace
+  # Update the k8s deployment
   - name: 'gcr.io/cloud-builders/kubectl'
-    id: 'Deploy'
-    args: ['-n', 'dev', 'apply', '-f', 'dev/deployment.yaml']
+    args: [
+      'set', 'image',
+      'deployment/hello-cloudbuild',
+      'hello-cloudbuild=us-central1-docker.pkg.dev/qwiklabs-gcp-01-4fc35229c6d2/my-repository/hello-cloudbuild-dev:'
+    ]
     env:
-    - 'CLOUDSDK_COMPUTE_REGION=us-central1-c'
-    - 'CLOUDSDK_CONTAINER_CLUSTER=hello-cluster'
+      - 'CLOUDSDK_COMPUTE_ZONE=${_ZONE}'
+      - 'CLOUDSDK_CONTAINER_CLUSTER=hello-cluster'
+
+# Store images in Artifact Registry
+images: [
+  'us-central1-docker.pkg.dev/qwiklabs-gcp-01-4fc35229c6d2/my-repository/hello-cloudbuild-dev:'
+]
+
+# Use substitutions for project ID and tag
+substitutions:
+  _TAG_NAME: v1.0
+
+# Cloud Build options
 options:
- logging: CLOUD_LOGGING_ONLY
+  logging: CLOUD_LOGGING_ONLY
+
+# Use the default substitution variables
+# qwiklabs-gcp-01-4fc35229c6d2 is automatically available in Cloud Build
